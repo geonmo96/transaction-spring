@@ -1,0 +1,64 @@
+1. 시작하자마자 버전 설정
+5.0.2, 3.7.0, 1.8, 1.8
+encoding 추가
+jdbc 연결 라이브러리 추가
+<!-- JDBC Template-->
+<dependency>
+<groupId>org.springframework</groupId>
+<artifactId>spring-jdbc</artifactId>
+<version>4.1.4.RELEASE</version>
+</dependency>
+
+2. DB에 테이블 생성
+create table userticket(
+id varchar2(20),
+ticketnum number(2)
+);
+
+create table systemticket(
+id varchar2(20),
+ticketnum number(2),
+constraint constname check(ticketnum<5)
+);
+
+3. db 연결용 xml 생성
+applicationJDBC.xml
+<bean name="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+   <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver" />
+   <property name="url" value="jdbc:oracle:thin:@localhost:1521:xe" />
+   <property name="username" value="c##jsp" />
+   <property name="password" value="1234" />
+</bean>
+<bean name="template" class="org.springframework.jdbc.core.JdbcTemplate">
+   <property name="dataSource" ref="dataSource" />
+</bean>
+
+4. form action으로 데이터를 전달할 때 파라미터의 이름이 dto의 이름과 같다면 따로 설정할 필요가 없음.
+
+5. template.update의 반환값은 성공이면 1이 들어온다.
+
+6. 연관된 데이터베이스의 테이블이라면 transactionTemplate을 사용하면 됨
+	public int[] buyTicket(TicketDTO dto) {
+		String sql_user = "insert into userticket(id,ticketnum) values(?,?)";
+		String sql_system = "insert into systemticket(id,ticketnum) values(?,?)";
+		int arr[] = new int[2];
+		try {
+			// 연관된 데이터베이스 묶기
+			transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+				@Override
+				protected void doInTransactionWithoutResult(TransactionStatus status) {
+					arr[0] = template.update(sql_user, ps->{
+						ps.setString(1, dto.getId());
+						ps.setInt(2, dto.getTicketnum());
+					});
+					arr[1] = template.update(sql_system, ps->{
+						ps.setString(1, dto.getId());
+						ps.setInt(2, dto.getTicketnum());
+					});
+				}
+			});
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		return arr;
+	}
